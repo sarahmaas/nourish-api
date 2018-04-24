@@ -3,5 +3,5 @@ class Recipe < ApplicationRecord
   belongs_to :user
 
   # validates values exist
-  validates_presence_of :title, :source, :servings, :description
+  validates_presence_of :title, :servings, :description
 end

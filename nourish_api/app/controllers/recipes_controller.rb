@@ -1,5 +1,4 @@
 class RecipesController < ApplicationController
-<<<<<<< HEAD
   before_action :set_recipe, only: [:show, :update, :destroy]
 
   # GET /recipes
@@ -42,6 +41,4 @@ class RecipesController < ApplicationController
     @recipe = Recipe.find(params[:id])
   end
 
-=======
->>>>>>> 3cd8ffbe42a72039c7ab153407f88b1e2ab9fb99
 end
