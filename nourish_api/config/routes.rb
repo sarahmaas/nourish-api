@@ -3,6 +3,7 @@ Rails.application.routes.draw do
   end
   # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
   constraints subdomain: 'api' do
+    
   end
 
   # set up ingredient_categories / ingredients routes
@@ -13,5 +14,8 @@ Rails.application.routes.draw do
 
   resources :ingredients, only: [:show, :update, :destroy]
 
+
+  resources :recipes
+  
 end
 
