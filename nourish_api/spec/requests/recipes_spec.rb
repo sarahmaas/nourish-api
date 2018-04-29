@@ -5,13 +5,15 @@
 require 'rails_helper'
 
 RSpec.describe 'Recipes API', type: :request do
-  let!(:recipes) { create_list(:recipe, 10) }
+  let!(:user) { create(:user) }
+  let(:user_id) { user.id }
+  let!(:recipes) { create_list(:recipe, 10, user_id: user.id) }
   let!(:recipe_id) { recipes.first.id }
 
   # spec for GET/recipes
   describe 'GET/recipes' do
     # make get request
-    before { get 'recipes' }
+    before { get '/recipes' }
 
     it 'returns recipes' do
       expect(json).not_to be_empty
@@ -31,7 +33,7 @@ RSpec.describe 'Recipes API', type: :request do
     context 'when the record exists' do
       it 'returns the recipe' do
         expect(json).not_to be_empty
-        expect(json['id']).to eq recipe_id
+        expect(json['id']).to eq id
       end
 
       it 'returns status code 200' do

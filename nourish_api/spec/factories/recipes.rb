@@ -1,7 +1,7 @@
 FactoryBot.define do
   factory :recipe do
     title { Faker::Food.dish }
-    user_id { Faker::Number.number(10) }
+    user_id nil
     source { Faker::Internet.url }
     servings { Faker::Number.digit }
     description { Faker::Food.describe }

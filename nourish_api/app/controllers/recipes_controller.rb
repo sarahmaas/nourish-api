@@ -1,4 +1,5 @@
 class RecipesController < ApplicationController
+  before_action :set_user, only: [:index, :create]
   before_action :set_recipe, only: [:show, :update, :destroy]
 
   # GET /recipes
