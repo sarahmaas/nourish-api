@@ -7,7 +7,6 @@ module ExceptionHandler
   extend ActiveSupport::Concern
 
   included do 
-
     # handle 'record not found' errors
     # return error message+ '404'
     rescue_from ActiveRecord::RecordNotFound do |e|
@@ -19,6 +18,12 @@ module ExceptionHandler
     # return error message + '422'
     rescue_from ActiveRecord::RecordInvalid do |e|
       render json: {message: e.message}, status: :unprocessable_entity
+    end
+
+    # handle 'parameter missing' errors
+    # return error message + '400'
+    rescue_from ActionController::ParameterMissing do |e|
+      render :nothing => true, status: :bad_request
     end
 
   end

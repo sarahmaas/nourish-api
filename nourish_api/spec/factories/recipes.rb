@@ -1,9 +1,9 @@
 FactoryBot.define do
   factory :recipe do
-    title { Faker::Food.dish }
     user_id nil
-    source { Faker::Internet.url }
-    servings { Faker::Number.digit }
-    description { Faker::Food.describe }
+    title { Faker::Lorem.sentence}
+    summary { Faker::Lorem.sentence }
+    source { Faker:: Internet.domain_name }
+    instructions { Faker::Lorem.paragraph }
   end
 end

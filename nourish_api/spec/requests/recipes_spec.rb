@@ -3,120 +3,245 @@
 # test methods adapted from https://scotch.io/tutorials/build-a-restful-json-api-with-rails-5-part-one
 
 require 'rails_helper'
+require 'support/request_spec_helper'
+require 'json'
 
 RSpec.describe 'Recipes API', type: :request do
-  let!(:user) { create(:user) }
-  let(:user_id) { user.id }
-  let!(:recipes) { create_list(:recipe, 10, user_id: user.id) }
-  let!(:recipe_id) { recipes.first.id }
 
-  # spec for GET/recipes
-  describe 'GET/recipes' do
-    # make get request
-    before { get '/recipes' }
+  let(:num_recipes) { 5 }
+  let(:num_ingredients) { 10 }
+  let(:num_restrictions) { 2 }
 
-    it 'returns recipes' do
-      expect(json).not_to be_empty
-      expect(json.size).to eq 10
+  let!(:user_1) { create(:user) } 
+  subject { auth_post user_1, '/auth', params: {  email: user_1.email,
+                                                  password: user_1.password,
+                                                  password_confirmation: user_1.password, 
+                                                  confirm_success_url: "www.google.com" } }
+
+  let!(:user_2) { create(:user) }
+
+  let!(:uid_1) { user_1.id }
+  let!(:uid_2) { user_2.id }
+
+  let!(:user_1_recipes) { create_recipe_list(user_1, num_recipes, num_ingredients, num_restrictions ) }
+  let!(:user_2_recipes) { create_recipe_list(user_2, num_recipes, num_ingredients, 0 ) }
+
+  let(:id) { user_1_recipes.first.id }
+
+  #
+  # spec for GET /users/:id/recipes
+  #
+
+  describe "GET /users/:id/recipes" do
+    before { auth_get user_1, "/users/#{user_1.id}/recipes", params: {} }
+  #  before { get "/users/#{uid_1}/recipes", headers: user_1.headers }
+
+    context 'when recipes are in database' do
+    
+      it 'returns status code 200' do
+        expect(response).to have_http_status(200)
+      end
+
+      it 'returns all of that user\'s recipes' do
+        expect(json.size).to eq user_1_recipes.size      
+      end
+
+      it 'returns all ingredients in that recipe' do
+        json.each do |rec|
+          ingredients = rec['ingredient_recipes']
+          expect(ingredients.size).to eq num_ingredients
+        end
+      end
+
+      it 'returns appropriate dietary restrictions' do
+        json.each do |rec|
+          rest = rec['dietary_restriction_recipes']
+          expect(rest.size).to eq num_restrictions
+        end
+      end
+
+    end # end context
+
+  end # end describe
+
+  #
+  # spec for GET /recipes
+  #
+
+  describe "GET /recipes" do
+    before { get "/recipes" } 
+
+    context 'when recipes are in database' do
+  
+      it 'returns status code 200' do
+        expect(response).to have_http_status(200)
+      end
+
+      it 'returns all recipes' do
+        expect(json.size).to eq user_1_recipes.size + user_2_recipes.size
+      end
+
     end
 
-    it 'returns status 200' do  
-      expect(response).to have_http_status 200
-    end
   end
-
+  
+  #
   # spec for GET /recipes/:id
-  describe 'GET /recipes/:id' do
-     before { get "/recipes/#{recipe_id}" }
+  #
 
-    # expect a request for recipe id of :recipe_id
-    context 'when the record exists' do
+  describe "GET /recipes/:id" do
+
+    before { get "/recipes/#{id}" }
+
+    context 'when recipe exists' do
+
+      # assuming a recipe exists with id == 1
+      it 'returns status code 200' do
+        expect(response).to have_http_status(200)
+      end
+      
       it 'returns the recipe' do
-        expect(json).not_to be_empty
         expect(json['id']).to eq id
       end
 
-      it 'returns status code 200' do
-        expect(response).to have_http_status 200
-      end
     end
-  
-    context 'when the record does not exist' do
-      let(:recipe_id) { 99 }
 
+    context 'when recipe record does not exist' do
+ 
+      let(:id) { -1 }
+     
       it 'returns status code 404' do
         expect(response).to have_http_status 404
       end
 
       it 'returns not found message' do
         expect(response.body).to match /Couldn't find Recipe/
-      end
-    end    
- 
-  end
+      end  
 
-  # spec for POST /recipes
-  describe 'POST /recipes' do
+    end # end context
+      
+  end # end describe block
+
+  #
+  # spec for POST /users/:id/recipes
+  #
+
+  describe 'POST /users/:id/recipes' do
   
-    let(:valid_attributes) { {title: 'Slow Cooker Garlic Butter Chicken with Cream Cheese Sauce', user_id: '1', source: 'https://www.oursmallhours.com/slow-cooker-garlic-butter-chicken-cream-cheese-sauce/', servings: '4', description: 'The most amazing yet simple recipe I\'ve ever encountered.'} }
+    # creating some test data...building known good data 
 
-    context 'when request is valid' do
-      before { post '/recipes', params: valid_attributes}
+    let!(:ingredient_category) { create(:ingredient_category) }
+    let!(:ingredient) { create(:ingredient, ingredient_category_id: ingredient_category.id) }
+    let(:iid) { ingredient.id }
 
-      it 'creates a recipe' do
-        expect( json['title'] ).to eq 'Slow Cooker Garlic Butter Chicken with Cream Cheese Sauce'
-      end
+    let!(:measure) { create(:measure) }
+    let!(:mid) { measure.id }
+
+    # use that data to build our recipe request
+
+    let(:valid_attrs) { { :recipe => {
+                           title: 'myrecipe', summary: 'it\'s a new one', 
+                           instructions: 'do a thing', 
+                           ingredient_recipes_attributes: [
+                                { ingredient_id: "#{iid}", measure_id: "#{mid}", amount: '3' } ] 
+                           } 
+                        } 
+                      }
+     
+    context 'when request attributes are valid' do
+      before { auth_post user_1, "/users/#{user_1.id}/recipes", params: valid_attrs }
 
       it 'returns status code 201' do
         expect(response).to have_http_status 201
       end
     end
 
-    context 'when request is invalid' do
-      before { post '/recipes', params: { } }
+    context 'when request attributes are invalid' do
+      before { auth_post user_1, "/users/#{user_1.id}/recipes", params: {} }
 
-      it 'returns status code 422' do
-        expect(response).to have_http_status 422
+      it 'returns status code 400' do
+        expect(response).to have_http_status 400
       end
 
-      it 'returns validation failure message' do
-        expect(response.body).to match /Validation failed: Title can't be blank/
-      end
     end
  
-  end
+  end # end describe block
 
+  #
+  # spec for PUT /recipes
+  #
 
-  # spec for PUT /recipes/:id
-  describe 'PUT /recipes/:id' do
+  describe "PUT /recipes" do
 
-    let(:valid_attributes) { {title: 'Chicken'} } 
+    let(:valid_attrs) { { recipe: { title: 'croque monsieur' } } }
+    before { auth_put user_1, "/recipes/#{id}", params: valid_attrs }
 
     context 'when recipe exists' do
-      before { put "/recipes/#{id}", params: valid_attributes}
-
-      it 'updates the recipe' do
-        updated_recipe = Recipe.find(id)
-        expect(updated_recipe.title).to match /Chicken/
-      end
-
       it 'returns status code 204' do
         expect(response).to have_http_status 204
       end
-    end
 
-  end
+      it 'updates the recipe' do
+        updated_recipe = Recipe.find(id)
+        expect(updated_recipe.title).to match /croque monsieur/
+      end
+    end # end context
 
-  # spec for DELETE /recipes/:id
+    context 'when recipe does not exist' do
+
+      let(:id) { -1 }
+      it 'returns status code 404' do
+        expect(response).to have_http_status 404
+      end
+
+      it 'returns a not found message' do
+        expect(response.body).to match /Couldn't find Recipe/
+      end
+
+    end # end context
+
+    context 'when user not authroized to PUT' do
+      before { auth_put user_1, "/recipes/#{user_2.recipes.first.id}", params: valid_attrs }
+      let!(:prevname) { user_2.recipes.first.title }
+
+      it 'returns unauthorized' do
+        expect(response).to have_http_status 401
+      end
+
+      it 'has not modified the name' do
+        expect(user_2.recipes.first.title).to eq prevname
+      end
+
+    end # end ontext 
+
+  end # end describe block
+
+  #
+  # spec for DELETE /recipes
+  #
+
   describe 'DELETE /recipes/:id' do
 
-    before { delete "/recipes/#{recipe_id}" }
+    context 'when authorized user attempts to delete' do
 
-    it 'returns status code 204' do
-      expect(response).to have_http_status 204 
-    end
+      before { auth_delete user_1, "/recipes/#{user_1.recipes.first.id}", params: {} }
   
-  end
+      it 'returns status code 204' do
+        expect(response).to have_http_status 204
+      end
 
+    end
 
-end
+    context 'when unauthorized user attempts to delete' do
+      
+      before { auth_delete user_1, "/recipes/#{user_2.recipes.first.id}", params: {} }
+
+      it 'returns unauthorized' do
+        expect(response).to have_http_status 401
+      end 
+
+    end
+
+  end # end describe block
+
+end # end test

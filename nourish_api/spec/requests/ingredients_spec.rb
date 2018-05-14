@@ -8,7 +8,32 @@ RSpec.describe 'Ingredient API', type: :request do
   let!(:ingredient_category) { create(:ingredient_category) }
   let!(:ingredients) { create_list(:ingredient, 10, ingredient_category_id: ingredient_category.id) }
   let(:ingredient_category_id) { ingredient_category.id }
+  let(:ingredient_category_name) { ingredient_category.name }
   let(:id) { ingredients.first.id }
+
+  describe 'GET /ingredients' do
+
+    before { get "/ingredients" }
+    
+    context 'when ingredients are in database' do
+      it 'returns status code 200' do
+        expect(response).to have_http_status 200
+      end
+   
+      it 'returns all ingredients' do
+        expect(json.size).to eq 10
+      end
+
+      it 'returns ingredient categories' do
+        json.each do |ingredient|
+          category = ingredient['ingredient_category']
+          expect(category['name']).to eq ingredient_category_name
+          expect(category['id']).to eq ingredient_category_id
+        end
+      end
+    end
+
+  end
 
   # spec for GET /ingredient_categories/:id/ingredients
   describe 'GET /ingredient_categories/:ingredient_category_id/ingredients' do
@@ -128,7 +153,7 @@ RSpec.describe 'Ingredient API', type: :request do
   # spec for DELETE /ingredients/:id
   describe 'DELETE /ingredients/:id' do
 
-    before { delete "/ingredients/#{id}"}
+    before { delete "/ingredients/#{id}" }
 
     it 'returns status code 204' do
       expect(response).to have_http_status 204

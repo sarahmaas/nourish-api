@@ -1,4 +1,7 @@
 Rails.application.routes.draw do
+  mount_devise_token_auth_for 'User', at: 'auth'
+
+  #devise_for :users
   api_version(:module => "V1", :path => {:value => "v1"}) do
   end
   # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
@@ -12,7 +15,31 @@ Rails.application.routes.draw do
     resources :ingredients, only: [:index, :create]
   end
 
-  resources :ingredients, only: [:show, :update, :destroy]
+  # allow GET /ingredients as well
+  resources :ingredients, only: [:index, :show, :update, :destroy]
+
+  # set up dietary_restrictions routes
+  resources :dietary_restrictions
+
+  # set up users / recipes
+  # (1 user : m recipes)
+  resources :users, only: [:index, :show] do
+    resources :recipes, only: [:index, :create]
+  end
+  
+  # allow GET /recipes as well
+  resources :recipes, only: [:index, :update, :destroy]
+
+  # specify exact form of GET /recipes/:id to avoid conflict with /search 
+  # :id can only contain digits
+  get '/:id', to: 'recipes#show', constraints: { id: /\d.+/ }
+
+  # add recipes/search route
+  resources :recipes do 
+    collection do
+      get 'search'
+    end 
+  end 
 
 
   resources :recipes
